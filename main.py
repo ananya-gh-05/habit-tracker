@@ -1,5 +1,5 @@
 import sys
-from PySide6.QtWidgets import QApplication,QWidget,QCheckBox,QVBoxLayout,QLabel,QPushButton,QInputDialog,QHBoxLayout
+from PySide6.QtWidgets import QApplication,QWidget,QCheckBox,QVBoxLayout,QLabel,QPushButton,QInputDialog,QHBoxLayout,QMessageBox,QDialog,QListWidget
 from PySide6.QtCore import Qt
 from database import create_tables,local_session
 from models import Habit,HabitCompletion
@@ -11,6 +11,16 @@ def add_habit():
     name,ok=QInputDialog.getText(window,"Add Habit","Enter the habit name:")
     if ok and name.strip():
         session=local_session()
+
+        #check if any same existing habits
+        existing_habit=session.query(Habit).filter(
+            Habit.name.ilike(name.strip())
+        ).first()
+        if existing_habit:
+            QMessageBox.warning(window,"Duplicate detected","This habit already exists!")
+            session.close()
+            return
+
 
         habit=Habit(name=name.strip())
         session.add(habit)
@@ -217,10 +227,73 @@ def delete_habit(habit_id):
     load_habits()
 
 
+#view history
+def view_history():
+    history_window=QDialog(window)
+    history_window.setWindowTitle("Habit History")
+    history_window.resize(350,400)
+    history_window.setStyleSheet("""
+        QDialog {
+            background-color: #DCEEFF;
+        }
+        QListWidget {
+            background-color: #DCEEFF;
+            color: #123B66;
+            border: 3px solid #52796F;
+            border-radius: 8px;
+            padding: 8px;
+        }
+    """)
+    history_layout=QVBoxLayout()
+    history_list=QListWidget()
+    history_list.setStyleSheet("""
+        QListWidget {
+            background-color: #DCEEFF;
+            color: #123B66;
+            border: 3px solid #52796F;
+        }
+    """)
+
+    session=local_session()
+    habits=session.query(Habit).all()
+
+    if not habits:
+        history_list.addItem("No Habits available!")
+    else:
+        for habit in habits:
+            history_list.addItem(habit.name)
+
+            completions=session.query(HabitCompletion).filter(
+                HabitCompletion.habit_id==habit.id
+            ).order_by(HabitCompletion.completed_at.desc()).all()
+            if completions:
+                for completion in completions:
+                    history_list.addItem(f"  Completed: {completion.completed_at}")
+            else:
+                history_list.addItem("No completions yet!")
+
+            history_list.addItem("")
+
+    session.close()
+    history_layout.addWidget(history_list)
+    history_window.setLayout(history_layout)
+    history_window.exec()
+
+#buttons section
+button_layout=QHBoxLayout()
+
 #add button
 add_button=QPushButton("Add Habit")
 add_button.clicked.connect(add_habit)
-layout.addWidget(add_button)
+button_layout.addWidget(add_button)
+
+#history button
+history_button=QPushButton("View History")
+history_button.clicked.connect(view_history)
+button_layout.addWidget(history_button)
+
+layout.addLayout(button_layout)
+
 
 load_habits()
 

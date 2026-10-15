@@ -1,4 +1,4 @@
-from sqlalchemy import Column,Integer,String,DateTime,Date
+from sqlalchemy import Column,Integer,String,DateTime,Date,UniqueConstraint,ForeignKey
 from datetime import datetime,date
 from sqlalchemy.orm import declarative_base
 
@@ -11,9 +11,11 @@ class Habit(Base):
     name=Column(String(100),nullable=False)
     created_at=Column(DateTime,default=datetime.now)
 
+
 class HabitCompletion(Base):
     __tablename__="habit_completions"
+    __table_args__=(UniqueConstraint("habit_id","completed_at",name="unique_completion_per_day"),)
 
     id=Column(Integer,primary_key=True)
-    habit_id=Column(Integer,nullable=False)
+    habit_id=Column(Integer,ForeignKey("habits.id",ondelete="CASCADE"),nullable=False)
     completed_at=Column(Date,default=date.today)
