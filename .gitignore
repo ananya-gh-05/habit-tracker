@@ -1,2 +1,4 @@
-habits.db
 __pycache__/
+__pycache__ copy/
+*.py[cod]
+habits.db
